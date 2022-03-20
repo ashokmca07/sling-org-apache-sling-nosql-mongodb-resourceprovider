@@ -18,60 +18,56 @@
  */
 package org.apache.sling.nosql.mongodb.resourceprovider.impl;
 
-import java.util.Map;
-
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.ConfigurationPolicy;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
-import org.apache.sling.api.resource.ResourceProvider;
 import org.apache.sling.api.resource.ResourceProviderFactory;
-import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.sling.nosql.generic.adapter.MetricsNoSqlAdapterWrapper;
 import org.apache.sling.nosql.generic.adapter.NoSqlAdapter;
 import org.apache.sling.nosql.generic.resource.AbstractNoSqlResourceProviderFactory;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.event.EventAdmin;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoClient;
 
-import aQute.bnd.annotation.component.Deactivate;
-
 /**
  * {@link ResourceProviderFactory} implementation that uses MongoDB as persistence.
  */
-@Component(immediate = true, metatype = true,
-    name="org.apache.sling.nosql.mongodb.resourceprovider.MongoDBNoSqlResourceProviderFactory.factory.config",
-    label = "Apache Sling NoSQL MongoDB Resource Provider Factory", 
-    description = "Defines a resource provider factory with MongoDB persistence.", 
-    configurationFactory = true, policy = ConfigurationPolicy.REQUIRE)
-@Service(value = ResourceProviderFactory.class)
-@Property(name = "webconsole.configurationFactory.nameHint", 
-    value = "Root paths: {" + MongoDBNoSqlResourceProviderFactory.PROVIDER_ROOTS_PROPERTY + "}")
+@Component(immediate = true,
+        configurationPolicy = ConfigurationPolicy.REQUIRE,
+        service = ResourceProviderFactory.class,
+        name="org.apache.sling.nosql.mongodb.resourceprovider.MongoDBNoSqlResourceProviderFactory.factory.config",
+        properties = {
+                "webconsole.configurationFactory.nameHint=Root paths: {}"
+        })
+@Designate(ocd = MongoDBNoSqlResourceProviderFactory.Config.class, factory = true)
 public final class MongoDBNoSqlResourceProviderFactory extends AbstractNoSqlResourceProviderFactory {
 
-    @Property(label = "Root paths", description = "Root paths for resource provider.", cardinality = Integer.MAX_VALUE)
-    static final String PROVIDER_ROOTS_PROPERTY = ResourceProvider.ROOTS;
-    
-    @Property(label = "Connection String",
-            description = "MongoDB connection String. Example: 'localhost:27017,localhost:27018,localhost:27019'",
-            value = MongoDBNoSqlResourceProviderFactory.CONNECTION_STRING_DEFAULT)
-    static final String CONNECTION_STRING_PROPERTY = "connectionString";
+    @ObjectClassDefinition(name = "Apache Sling NoSQL MongoDB Resource Provider Factory",
+            description = "Defines a resource provider factory with MongoDB persistence.")
+    public @interface Config {
+
+        @AttributeDefinition(name = "Root paths", description = "Root paths for resource provider.", cardinality = Integer.MAX_VALUE)
+        String provider_roots() default "";
+
+        @AttributeDefinition(name = "Connection String", description = "MongoDB connection String. Example: 'localhost:27017,localhost:27018,localhost:27019'")
+        String connectionString() default MongoDBNoSqlResourceProviderFactory.CONNECTION_STRING_DEFAULT;
+
+        @AttributeDefinition(name = "Database", description = "MongoDB database to store resource data in.")
+        String database() default MongoDBNoSqlResourceProviderFactory.DATABASE_DEFAULT;
+
+        @AttributeDefinition(name = "Collection", description = "MongoDB collection to store resource data in.")
+        String collection() default MongoDBNoSqlResourceProviderFactory.COLLECTION_DEFAULT;
+    }
+
     private static final String CONNECTION_STRING_DEFAULT = "localhost:27017";
-    
-    @Property(label = "Database",
-            description = "MongoDB database to store resource data in.",
-            value = MongoDBNoSqlResourceProviderFactory.DATABASE_DEFAULT)
-    static final String DATABASE_PROPERTY = "database";
     private static final String DATABASE_DEFAULT = "sling";
-    
-    @Property(label = "Collection",
-            description = "MongoDB collection to store resource data in.",
-            value = MongoDBNoSqlResourceProviderFactory.COLLECTION_DEFAULT)
-    static final String COLLECTION_PROPERTY = "collection";
     private static final String COLLECTION_DEFAULT = "resources";
     
     @Reference
@@ -81,10 +77,10 @@ public final class MongoDBNoSqlResourceProviderFactory extends AbstractNoSqlReso
     private NoSqlAdapter noSqlAdapter;
 
     @Activate
-    private void activate(ComponentContext componentContext, Map<String, Object> config) {
-        String connectionString = PropertiesUtil.toString(config.get(CONNECTION_STRING_PROPERTY), CONNECTION_STRING_DEFAULT);
-        String database = PropertiesUtil.toString(config.get(DATABASE_PROPERTY), DATABASE_DEFAULT);
-        String collection = PropertiesUtil.toString(config.get(COLLECTION_PROPERTY), COLLECTION_DEFAULT);
+    private void activate(ComponentContext componentContext, Config config) {
+        String connectionString = config.connectionString();
+        String database = config.database();
+        String collection = config.collection();
         
         mongoClient = new MongoClient(connectionString);
         NoSqlAdapter mongodbAdapter = new MongoDBNoSqlAdapter(mongoClient, database, collection);
