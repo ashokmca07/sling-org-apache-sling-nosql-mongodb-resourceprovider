@@ -18,10 +18,14 @@
  */
 package org.apache.sling.nosql.mongodb.resourceprovider.impl;
 
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.spi.resource.provider.ResourceProvider;
 import org.apache.sling.api.resource.ResourceProviderFactory;
 import org.apache.sling.nosql.generic.adapter.MetricsNoSqlAdapterWrapper;
 import org.apache.sling.nosql.generic.adapter.NoSqlAdapter;
 import org.apache.sling.nosql.generic.resource.AbstractNoSqlResourceProviderFactory;
+import org.apache.sling.spi.resource.provider.ResolveContext;
+import org.apache.sling.spi.resource.provider.ResourceContext;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -36,20 +40,23 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoClient;
 
+import java.util.Iterator;
+
 /**
  * {@link ResourceProviderFactory} implementation that uses MongoDB as persistence.
  */
-@Component(immediate = true,
+@Component(
         configurationPolicy = ConfigurationPolicy.REQUIRE,
-        service = ResourceProviderFactory.class,
-        name="org.apache.sling.nosql.mongodb.resourceprovider.MongoDBNoSqlResourceProviderFactory.factory.config",
+        service = ResourceProvider.class,
+        name = "org.apache.sling.nosql.mongodb.resourceprovider.MongoDBNoSqlResourceProviderFactory.factory.config",
         properties = {
-                "webconsole.configurationFactory.nameHint=Root paths: {}"
+                "webconsole.configurationFactory.nameHint=Root paths: {" + ResourceProvider.PROPERTY_ROOT + "}"
         })
 @Designate(ocd = MongoDBNoSqlResourceProviderFactory.Config.class, factory = true)
 public final class MongoDBNoSqlResourceProviderFactory extends AbstractNoSqlResourceProviderFactory {
 
-    @ObjectClassDefinition(name = "Apache Sling NoSQL MongoDB Resource Provider Factory",
+    @ObjectClassDefinition(
+            name = "Apache Sling NoSQL MongoDB Resource Provider Factory",
             description = "Defines a resource provider factory with MongoDB persistence.")
     public @interface Config {
 
@@ -69,7 +76,7 @@ public final class MongoDBNoSqlResourceProviderFactory extends AbstractNoSqlReso
     private static final String CONNECTION_STRING_DEFAULT = "localhost:27017";
     private static final String DATABASE_DEFAULT = "sling";
     private static final String COLLECTION_DEFAULT = "resources";
-    
+
     @Reference
     private EventAdmin eventAdmin;
 
@@ -81,14 +88,14 @@ public final class MongoDBNoSqlResourceProviderFactory extends AbstractNoSqlReso
         String connectionString = config.connectionString();
         String database = config.database();
         String collection = config.collection();
-        
+
         mongoClient = new MongoClient(connectionString);
         NoSqlAdapter mongodbAdapter = new MongoDBNoSqlAdapter(mongoClient, database, collection);
-        
+
         // enable call logging and metrics for {@link MongoDBNoSqlAdapter}
         noSqlAdapter = new MetricsNoSqlAdapterWrapper(mongodbAdapter, LoggerFactory.getLogger(MongoDBNoSqlAdapter.class));
     }
-    
+
     @Deactivate
     private void deactivate() {
         if (mongoClient != null) {
@@ -106,4 +113,13 @@ public final class MongoDBNoSqlResourceProviderFactory extends AbstractNoSqlReso
         return eventAdmin;
     }
 
+    @Override
+    public Resource getResource(ResolveContext ctx, String path, ResourceContext resourceContext, Resource parent) {
+        return null;
+    }
+
+    @Override
+    public Iterator<Resource> listChildren(ResolveContext ctx, Resource parent) {
+        return null;
+    }
 }
